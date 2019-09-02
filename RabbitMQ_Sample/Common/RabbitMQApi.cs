@@ -41,9 +41,7 @@ namespace RabbitMQ_Sample.Common
 
         public SubscribeResult Subscribe(SubscribeRequest subscribeRequest)
         {
-            List<string> g=new List<string>();
             var subscribeResult = new SubscribeResult(); ;
-
             using (var connection = Factory.CreateConnection())
             using (var channel = connection.CreateModel())
             {
@@ -55,8 +53,6 @@ namespace RabbitMQ_Sample.Common
                     subscribeResult.Body = Encoding.UTF8.GetString(result.Body);
                 }
             }
-
-            
             return subscribeResult;
         }
 
