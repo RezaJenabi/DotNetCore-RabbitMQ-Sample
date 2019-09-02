@@ -11,12 +11,12 @@ namespace RabbitMQ_Sample.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class DirectController : ControllerBase
+    public class TopicController : ControllerBase
     {
         private readonly IRabbitMQApi _rabbitMqApi;
         private string Key { get; } = "Pdf_Log_Queue";
 
-        public DirectController(IRabbitMQApi rabbitMqApi)
+        public TopicController(IRabbitMQApi rabbitMqApi)
         {
             _rabbitMqApi = rabbitMqApi;
         }
@@ -24,14 +24,14 @@ namespace RabbitMQ_Sample.Controllers
         [Route("Send")]
         public JsonResult Send()
         {
-            var publishResult = _rabbitMqApi.PublishDirect(new PublishRequest { Body = "Pdf_Events", RoutingKey = Key });
+            var publishResult = _rabbitMqApi.PublishTopic(new PublishRequest { Body = "Pdf_Events", RoutingKey = Key });
             return new JsonResult(publishResult);
         }
         [HttpGet]
         [Route("Receive")]
         public JsonResult Receive()
         {
-            var subscribeResult = _rabbitMqApi.SubscribeDirect(new SubscribeRequest { Queue = Key });
+            var subscribeResult = _rabbitMqApi.SubscribeTopic(new SubscribeRequest { Queue = Key });
             return new JsonResult(subscribeResult);
         }
 
