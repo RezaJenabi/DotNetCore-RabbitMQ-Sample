@@ -1,7 +1,7 @@
-﻿using RabbitMQ.Client;
-using RabbitMQ_Sample.ViewModel;
+﻿using Common.ViewModel;
+using RabbitMQ.Client;
 
-namespace RabbitMQ_Sample.Common
+namespace Common.RabbitMQ
 {
     public interface IRabbitMQApi
     {

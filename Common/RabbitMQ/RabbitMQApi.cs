@@ -1,13 +1,13 @@
-﻿using System;
-using System.Text;
+﻿using Common.ViewModel;
 using RabbitMQ.Client;
-using RabbitMQ_Sample.ViewModel;
+using System;
+using System.Text;
 
-namespace RabbitMQ_Sample.Common
+namespace Common.RabbitMQ
 {
     public class RabbitMQApi : DefaultBasicConsumer, IRabbitMQApi
     {
-        public ConnectionFactory Factory { get; set; }= new ConnectionFactory
+        public ConnectionFactory Factory { get; set; } = new ConnectionFactory
         {
             UserName = "guest",
             Password = "guest",
@@ -32,7 +32,7 @@ namespace RabbitMQ_Sample.Common
                 channel.QueueBind(publish.RoutingKey, "messageexchange", publish.RoutingKey, null);
                 channel.BasicPublish("messageexchange", publish.RoutingKey, null, Encoding.UTF8.GetBytes(publish.Body));
             }
-           
+
             return new PublishResult { Status = true };
         }
 

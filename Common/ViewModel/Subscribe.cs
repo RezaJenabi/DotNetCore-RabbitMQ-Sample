@@ -1,4 +1,4 @@
-﻿namespace RabbitMQ_Sample.ViewModel
+﻿namespace Common.ViewModel
 {
     public class SubscribeResult
     {

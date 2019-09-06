@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace RabbitMQ_Sample.ViewModel
+namespace Common.ViewModel
 {
     public class PublishResult
     {
