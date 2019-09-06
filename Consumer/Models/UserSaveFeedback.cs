@@ -1,10 +1,10 @@
-﻿using Subscribe.Models;
+﻿using Consumer.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Subscribe.Models
+namespace Consumer.Models
 {
     public class UserSaveFeedback
     {

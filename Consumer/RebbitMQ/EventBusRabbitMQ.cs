@@ -1,15 +1,15 @@
-﻿using Newtonsoft.Json;
+﻿using Consumer.Models;
+using Consumer.Service;
+using Newtonsoft.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
-using Subscribe.Models;
-using Subscribe.Service;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Subscribe.RebbitMQ
+namespace Consumer.RebbitMQ
 {
     public class EventBusRabbitMQ : IDisposable
     {
@@ -60,8 +60,8 @@ namespace Subscribe.RebbitMQ
         private void ReceivedEvent(object sender, BasicDeliverEventArgs e)
         {
             var message = Encoding.UTF8.GetString(e.Body);
-           
-                if (e.RoutingKey == "userInsertMsgQ")
+
+            if (e.RoutingKey == "userInsertMsgQ")
             {
                 //var message = Encoding.UTF8.GetString(e.Body);
                 List<User> userList = JsonConvert.DeserializeObject<List<User>>(message);

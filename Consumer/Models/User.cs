@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Subscribe.Models
+namespace Consumer.Models
 {
     public class User
     {

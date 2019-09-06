@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Subscribe.RebbitMQ
+namespace Consumer.RebbitMQ
 {
     public interface IRabbitMQPersistentConnection : IDisposable
     {

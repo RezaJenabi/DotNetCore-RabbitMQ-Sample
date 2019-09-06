@@ -1,13 +1,13 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using Consumer.RebbitMQ;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
-using Subscribe.RebbitMQ;
 
-namespace Subscribe
+namespace Consumer
 {
     public class Startup
     {
@@ -24,7 +24,7 @@ namespace Subscribe
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
 
 
-            services.AddSingleton<RabbitMQPersistentConnection>(sp =>
+            services.AddSingleton(sp =>
             {
                 var logger = sp.GetRequiredService<ILogger<RabbitMQPersistentConnection>>();
 
@@ -62,7 +62,6 @@ namespace Subscribe
             }
 
             app.UseHttpsRedirection();
-
             //Initilize Rabbit Listener in ApplicationBuilderExtentions
             app.UseRabbitListener();
             app.UseMvc();
@@ -78,8 +77,8 @@ namespace Subscribe
         {
             Listener = app.ApplicationServices.GetService<RabbitMQPersistentConnection>();
             var life = app.ApplicationServices.GetService<IApplicationLifetime>();
-            life.ApplicationStarted.Register(OnStarted);
 
+            life.ApplicationStarted.Register(OnStarted);
             //press Ctrl+C to reproduce if your app runs in Kestrel as a console app
             life.ApplicationStopping.Register(OnStopping);
             return app;
