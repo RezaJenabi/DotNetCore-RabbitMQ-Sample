@@ -42,31 +42,25 @@ namespace Producer.Controllers
         [Route("text")]
         public void text()
         {
-
-
             {
-                string senderUniqueId = "userInsertMsgQ";
-
+                const string senderUniqueId = "userInsertMsgQ";
                 var factory = new ConnectionFactory() { HostName = "localhost", UserName = "guest", Password = "guest" };
                 var connection = factory.CreateConnection();
 
                 //-------------------------  Sending Data --------------------------------------------------------------------------------------
                 #region Sending Data
+
+                var objUserList = new List<User> { new User { EmailAddress = "d", FirstName = "d", LastName = "dd" } };
                 using (var channel = connection.CreateModel())
                 {
-
                     channel.QueueDeclare(queue: "userInsertMsgQ", durable: false, exclusive: false, autoDelete: false, arguments: null);
-
-
                     // create serialize object to send
-                    UserService _userService = new UserService();
-                    List<User> objeUserList = new List<User> { new User { EmailAddress = "d", FirstName = "d", LastName = "dd" } };
-                    string message = JsonConvert.SerializeObject(objeUserList);
+                    var message = JsonConvert.SerializeObject(objUserList);
 
                     var body = Encoding.UTF8.GetBytes(message);
                     //var body = "[{FirstName='a',LastName='d'}]";
 
-                    IBasicProperties properties = channel.CreateBasicProperties();
+                    var properties = channel.CreateBasicProperties();
                     properties.Persistent = true;
                     properties.DeliveryMode = 2;
                     properties.Headers = new Dictionary<string, object>
@@ -77,8 +71,8 @@ namespace Producer.Controllers
                     //properties.ContentType = "text/plain";
 
                     channel.ConfirmSelect();
-                    channel.BasicPublish(exchange: "",
-                                         routingKey: "userInsertMsgQ",
+                    channel.BasicPublish("",
+                                          "userInsertMsgQ",
                                          false,
                                          basicProperties: properties,
                                          body: body);
@@ -94,7 +88,6 @@ namespace Producer.Controllers
                 }
                 #endregion
 
-
                 //-------------------------  Receiving feedback ---------------------------------------------------------------------------------
                 using (var channel = connection.CreateModel())
                 {
@@ -107,27 +100,20 @@ namespace Producer.Controllers
                     var consumer = new EventingBasicConsumer(channel);
                     consumer.Received += (model, ea) =>
                     {
-                        IDictionary<string, object> headers = ea.BasicProperties.Headers; // get headers from Received msg
+                        var headers = ea.BasicProperties.Headers; // get headers from Received msg
 
                         foreach (KeyValuePair<string, object> header in headers)
                         {
-                            if (senderUniqueId == Encoding.UTF8.GetString((byte[])header.Value))// Get feedback message only for me
-                            {
-                                var body = ea.Body;
-                                var message = Encoding.UTF8.GetString(body);
-                                UserSaveFeedback feedback = JsonConvert.DeserializeObject<UserSaveFeedback>(message);
-                                // Console.WriteLine("[x] Feedback received ... ");
-                                //Console.WriteLine("[x] Success count {0} and failed count {1}", feedback.successCount, feedback.failedCount);
-                            }
+                            if (senderUniqueId != Encoding.UTF8.GetString((byte[])header.Value)) continue;
+                            var body = ea.Body;
+                            var message = Encoding.UTF8.GetString(body);
+                            var feedback = JsonConvert.DeserializeObject<UserSaveFeedback>(message);
+                            // Console.WriteLine("[x] Feedback received ... ");
+                            //Console.WriteLine("[x] Success count {0} and failed count {1}", feedback.successCount, feedback.failedCount);
                         }
                     };
 
-                    channel.BasicConsume(queue: "userInsertMsgQ_feedback",
-                                         autoAck: true,
-                                         consumer: consumer);
-
-
-
+                    channel.BasicConsume(queue: "userInsertMsgQ_feedback", autoAck: true, consumer: consumer);
                 }
             }
         }

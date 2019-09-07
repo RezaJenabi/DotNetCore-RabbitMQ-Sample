@@ -1,4 +1,6 @@
-﻿using Consumer.RebbitMQ;
+﻿using System.Reflection;
+using Consumer.RebbitMQ;
+using Consumer.RebbitMQ.IRabbitMQ;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
@@ -26,7 +28,7 @@ namespace Consumer
 
             services.AddSingleton(sp =>
             {
-                var logger = sp.GetRequiredService<ILogger<RabbitMQPersistentConnection>>();
+                var logger = sp.GetRequiredService<ILogger<AutoSubscriber>>();
 
                 var factory = new ConnectionFactory()
                 {
@@ -43,7 +45,7 @@ namespace Consumer
                     factory.Password = Configuration["EventBusPassword"];
                 }
 
-                return new RabbitMQPersistentConnection(factory);
+                return new AutoSubscriber(factory);
             });
 
             services.AddOptions();
@@ -71,27 +73,24 @@ namespace Consumer
 
     public static class ApplicationBuilderExtentions
     {
-        public static RabbitMQPersistentConnection Listener { get; set; }
+        public static AutoSubscriber Bus { get; set; }
 
         public static IApplicationBuilder UseRabbitListener(this IApplicationBuilder app)
         {
-            Listener = app.ApplicationServices.GetService<RabbitMQPersistentConnection>();
-            var life = app.ApplicationServices.GetService<IApplicationLifetime>();
+            Bus = app.ApplicationServices.GetService<AutoSubscriber>();
+            var lifeTime = app.ApplicationServices.GetService<IApplicationLifetime>();
+            var autoSubscriber = app.ApplicationServices.GetService<IAutoSubscriber>();
+            
+            lifeTime.ApplicationStarted.Register(() =>
+            {
+                autoSubscriber.Subscribe(Assembly.GetExecutingAssembly());
+                autoSubscriber.SubscribeAsync(Assembly.GetExecutingAssembly());
+            });
 
-            life.ApplicationStarted.Register(OnStarted);
-            //press Ctrl+C to reproduce if your app runs in Kestrel as a console app
-            life.ApplicationStopping.Register(OnStopping);
+            lifeTime.ApplicationStopped.Register(callback: () => Bus.Dispose());
+
             return app;
         }
-
-        private static void OnStarted()
-        {
-            Listener.CreateConsumerChannel();
-        }
-
-        private static void OnStopping()
-        {
-            Listener.Disconnect();
-        }
+      
     }
 }

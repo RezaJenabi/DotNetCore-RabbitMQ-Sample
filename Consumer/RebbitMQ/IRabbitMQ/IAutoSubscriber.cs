@@ -1,12 +1,10 @@
 ﻿using RabbitMQ.Client;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using System.Reflection;
 
 namespace Consumer.RebbitMQ
 {
-    public interface IRabbitMQPersistentConnection : IDisposable
+    public interface IAutoSubscriber : IDisposable
     {
         bool IsConnected { get; }
 
@@ -14,8 +12,8 @@ namespace Consumer.RebbitMQ
 
         IModel CreateModel();
 
-        void CreateConsumerChannel();
-
         void Disconnect();
+        void Subscribe(Assembly getExecutingAssembly);
+        void SubscribeAsync(Assembly getExecutingAssembly);
     }
 }
