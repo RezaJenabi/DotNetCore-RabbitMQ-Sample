@@ -5,8 +5,12 @@ using System.Threading.Tasks;
 
 namespace Consumer.RebbitMQ.IRabbitMQ
 {
-    interface IConsumer<in T> where T : class
+    interface IConsumer<in T>: IConsumer where T : class
     {
         void Consume(T message);
+    }
+
+    interface IConsumer
+    {
     }
 }

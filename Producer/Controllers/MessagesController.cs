@@ -1,4 +1,5 @@
-﻿using Common.RabbitMQ;
+﻿using System;
+using Common.RabbitMQ;
 using Common.ViewModel;
 using Microsoft.AspNetCore.Mvc;
 using RabbitMQ.Client;
@@ -116,6 +117,61 @@ namespace Producer.Controllers
                     channel.BasicConsume(queue: "userInsertMsgQ_feedback", autoAck: true, consumer: consumer);
                 }
             }
+        }
+
+        [HttpGet]
+        [Route("Send2")]
+        public void Send2()
+        {
+            var factory = new ConnectionFactory() { HostName = "localhost", UserName = "guest", Password = "guest" };
+            var connection = factory.CreateConnection();
+            var channel = connection.CreateModel();
+            channel.ConfirmSelect();
+            channel.ExchangeDeclare("ExchangeMessageService", ExchangeType.Direct, durable: true, autoDelete: false, arguments: null);
+            channel.QueueDeclare("QueueMessageService", true, false, false, null);
+            channel.QueueBind("QueueMessageService", "ExchangeMessageService", "MessageService_Id");
+            var properties = channel.CreateBasicProperties();
+            properties.Persistent = true;
+            properties.DeliveryMode = 2;
+
+            var objUserList = new List<User> { new User { EmailAddress = "d", FirstName = "d", LastName = "dd" } };
+
+            var message = JsonConvert.SerializeObject(objUserList);
+
+            var body = Encoding.UTF8.GetBytes(message);
+            channel.BasicPublish("ExchangeMessageService", "MessageService_Id", properties, body);
+
+
+            channel.ExchangeDeclare("ExchangeUserUpdate", ExchangeType.Direct, durable: true, autoDelete: false, arguments: null);
+            channel.QueueDeclare("QueueUserUpdate", true, false, false, null);
+            channel.QueueBind("QueueUserUpdate", "ExchangeUserUpdate", "UserUpdate_Id");
+
+            channel.BasicPublish("ExchangeUserUpdate", "UserUpdate_Id", properties, body);
+
+            // byte[] body = ...;
+            // var properties = channel.CreateBasicProperties();
+            // properties.Persistent = true;
+            // properties.DeliveryMode = 2;
+            // channel.BasicPublish("ExchangeMessageService", "MessageService_Id", properties, Encoding.UTF8.GetBytes("Hi"));
+            // uses a 5 second timeout
+            //channel.WaitForConfirmsOrDie(new TimeSpan(500));
+
+
+
+            //Topics
+            //channel.ExchangeDeclare("ExchangeLogs", ExchangeType.Topic, durable: true, autoDelete: false, arguments: null);
+            //channel.QueueDeclare("Logs", true, false, false, null);
+            //channel.QueueDeclare("Log_Inf", true, false, false, null);
+            //channel.QueueDeclare("Log_Cri", true, false, false, null);
+
+            //channel.QueueBind("Logs", "ExchangeLogs", "Log.#");
+            //channel.QueueBind("Log_Inf", "ExchangeLogs", "Log.Inf");
+            //channel.QueueBind("Log_Cri", "ExchangeLogs", "Log.Cri");
+
+            //channel.BasicPublish("ExchangeLogs", "Log.Inf", null, Encoding.UTF8.GetBytes("Hi"));
+            //channel.BasicPublish("ExchangeLogs", "Log.Cri", null, Encoding.UTF8.GetBytes("Hi"));
+
+
         }
     }
 }

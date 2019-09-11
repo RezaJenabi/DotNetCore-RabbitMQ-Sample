@@ -13,7 +13,7 @@ namespace Consumer.RebbitMQ
         IModel CreateModel();
 
         void Disconnect();
-        void Subscribe(Assembly getExecutingAssembly);
+        void Subscribe(string subscriptionId,Assembly getExecutingAssembly);
         void SubscribeAsync(Assembly getExecutingAssembly);
     }
 }

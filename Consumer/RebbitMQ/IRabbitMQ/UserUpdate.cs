@@ -4,8 +4,8 @@ using Consumer.RebbitMQ.Attributes;
 
 namespace Consumer.RebbitMQ.IRabbitMQ
 {
-    [Queue(queueName: "QueueMessageService", exchangeName: "ExchangeMessageService", routingKey: "MessageService_Id")]
-    public class UserInsert: IConsumer<List<User>>
+    [Queue(queueName: "QueueUserUpdate", exchangeName: "ExchangeUserUpdate", routingKey: "UserUpdate_Id")]
+    public class UserUpdate : IConsumer<List<User>>
     {
         public void Consume(List<User> message)
         {

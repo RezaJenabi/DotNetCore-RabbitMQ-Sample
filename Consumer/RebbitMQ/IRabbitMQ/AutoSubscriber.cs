@@ -6,9 +6,12 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using RabbitMQ.Client.Exceptions;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Consumer.Models;
+using Consumer.RebbitMQ.Attributes;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Consumer.RebbitMQ.IRabbitMQ
 {
@@ -20,6 +23,11 @@ namespace Consumer.RebbitMQ.IRabbitMQ
         private readonly IAutoSubscriber _persistentConnection;
         private IModel _consumerChannel;
         private string _queueName;
+        private string _exchangeName;
+        private string _routingKey;
+        private object _consumer;
+        private MethodInfo _consumeMethod;
+
 
         public AutoSubscriber(IConnectionFactory connectionFactory)
         {
@@ -30,15 +38,34 @@ namespace Consumer.RebbitMQ.IRabbitMQ
             }
         }
 
-        public void Subscribe(Assembly getExecutingAssembly)
+        public void Subscribe(string subscriptionId, Assembly getExecutingAssembly)
         {
             if (!IsConnected)
             {
                 TryConnect();
             }
-            Consumer();
+            var items = getExecutingAssembly.GetExportedTypes().Where(x => x.IsClass).ToList();
+            items.ForEach(x =>
+            {
+                if (x.GetInterfaces().All(y => y != typeof(IConsumer))) return;
+                var consumer = x.GetConstructor(Type.EmptyTypes);
+                foreach (Attribute attribute in x.GetCustomAttributes(true))
+                {
+                    //if don't have QueueAttribute
+                    if (!(attribute is QueueAttribute queue)) continue;
+                    _queueName = queue.QueueName ?? x.Name;
+                    _exchangeName = queue.ExchangeName ?? x.Name;
+                    _routingKey = queue.RoutingKey ?? subscriptionId;
 
+                    if (consumer != null) _consumer = consumer.Invoke(new object[] { });
+
+                    _consumeMethod = x.GetMethod("Consume");
+
+                    Consumer();
+                }
+            });
         }
+
 
         public void SubscribeAsync(Assembly getExecutingAssembly)
         {
@@ -47,19 +74,8 @@ namespace Consumer.RebbitMQ.IRabbitMQ
                 TryConnect();
             }
 
-           // //CHannel 02
-           // _eventBusRabbitMQ = new EventBusRabbitMQ(this, "emailSendMsgQ");
-            AsyncConsumer();
-
-          // //CHannel 01
-           // _eventBusRabbitMQ = new EventBusRabbitMQ(this, "userInsertMsgQ");
-          //  _eventBusRabbitMQ.CreateConsumerChannel();
-
-           // //CHannel 02
-           // _eventBusRabbitMQ = new EventBusRabbitMQ(this, "emailSendMsgQ");
-           // _eventBusRabbitMQ.CreateConsumerChannel();
         }
-        public IModel Consumer()
+        private IModel Consumer()
         {
             if (!IsConnected)
             {
@@ -67,18 +83,10 @@ namespace Consumer.RebbitMQ.IRabbitMQ
             }
 
             var channel = CreateModel();
-            channel.QueueDeclare(queue: _queueName, durable: false, exclusive: false, autoDelete: false, arguments: null);
+            channel.QueueDeclare(_queueName, true, false, false, null);
 
             var consumer = new EventingBasicConsumer(channel);
 
-            //consumer.Received += async (model, e) =>
-            //{
-            //    var eventName = e.RoutingKey;
-            //    var message = Encoding.UTF8.GetString(e.Body);
-            //    channel.BasicAck(e.DeliveryTag, multiple: false);
-            //};
-
-            //Create event when something receive
             consumer.Received += ReceivedEvent;
 
             channel.BasicConsume(queue: _queueName, autoAck: true, consumer: consumer);
@@ -90,15 +98,14 @@ namespace Consumer.RebbitMQ.IRabbitMQ
             return channel;
         }
 
-        public IModel AsyncConsumer()
+        private IModel AsyncConsumer()
         {
             if (!IsConnected)
             {
                 TryConnect();
             }
-
             var channel = CreateModel();
-            channel.QueueDeclare(queue: _queueName, durable: false, exclusive: false, autoDelete: false, arguments: null);
+            channel.QueueDeclare(_queueName, true, false, false, null);
 
             var consumer = new EventingBasicConsumer(channel);
 
@@ -118,26 +125,52 @@ namespace Consumer.RebbitMQ.IRabbitMQ
             };
             return channel;
         }
+
         private void ReceivedEvent(object sender, BasicDeliverEventArgs e)
         {
-            var message = Encoding.UTF8.GetString(e.Body);
 
-            if (e.RoutingKey == "userInsertMsgQ")
+            var items = Assembly.GetExecutingAssembly()?.GetExportedTypes().Where(x => x.IsClass).ToList();
+            items.ForEach(x =>
             {
-                //var message = Encoding.UTF8.GetString(e.Body);
-                List<User> userList = JsonConvert.DeserializeObject<List<User>>(message);
-               // UserSaveFeedback saveFeedback = _userService.InsertUsers(userList);
+                if (x.GetInterfaces().All(y => y != typeof(IConsumer))) return;
+                var consumer = x.GetConstructor(Type.EmptyTypes);
 
-               // PublishUserSaveFeedback("userInsertMsgQ_feedback", saveFeedback, e.BasicProperties.Headers);
-            }
+                _queueName = x.Name;
+                _exchangeName = x.Name;
+                _routingKey = string.Empty;
 
-            if (e.RoutingKey == "emailSendMsgQ")
-            {
-                //Implementation here
-            }
+                foreach (Attribute attribute in x.GetCustomAttributes(true))
+                {
+                    if (!(attribute is QueueAttribute queue)) continue;
+
+                    _queueName = queue.QueueName ?? x.Name;
+                    _exchangeName = queue.ExchangeName ?? x.Name;
+                    _routingKey = queue.RoutingKey;
+
+                    if (consumer != null) _consumer = consumer.Invoke(new object[] { });
+
+                    _consumeMethod = x.GetMethod("Consume");
+                    if (queue.RoutingKey != e.RoutingKey) continue;
+                    if (_consumeMethod != null)
+                        _consumeMethod.Invoke(_consumer, new object[]
+                        {
+                            JsonConvert.DeserializeObject(System.Text.Encoding.UTF8.GetString(e.Body),
+                                _consumeMethod.GetParameters().FirstOrDefault()?.ParameterType)
+                        });
+                }
+            });
+
+            //if (e.RoutingKey == _routingKey)
+            //{
+            //    //var message = Encoding.UTF8.GetString(e.Body);
+            //    List<User> userList = JsonConvert.DeserializeObject<List<User>>(message);
+            //    // UserSaveFeedback saveFeedback = _userService.InsertUsers(userList);
+
+            //    // PublishUserSaveFeedback("userInsertMsgQ_feedback", saveFeedback, e.BasicProperties.Headers);
+            //}
         }
 
-        public void PublishUserSaveFeedback(string _queueName, UserSaveFeedback publishModel, IDictionary<string, object> headers)
+        private void PublishUserSaveFeedback(string _queueName, UserSaveFeedback publishModel, IDictionary<string, object> headers)
         {
 
             if (!_persistentConnection.IsConnected)
@@ -171,8 +204,6 @@ namespace Consumer.RebbitMQ.IRabbitMQ
                 channel.ConfirmSelect();
             }
         }
-
-
 
         public void Disconnect()
         {

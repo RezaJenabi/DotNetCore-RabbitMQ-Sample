@@ -24,30 +24,8 @@ namespace Consumer
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
-
-
-            services.AddSingleton(sp =>
-            {
-                var logger = sp.GetRequiredService<ILogger<AutoSubscriber>>();
-
-                var factory = new ConnectionFactory()
-                {
-                    HostName = Configuration["EventBusConnection"]
-                };
-
-                if (!string.IsNullOrEmpty(Configuration["EventBusUserName"]))
-                {
-                    factory.UserName = Configuration["EventBusUserName"];
-                }
-
-                if (!string.IsNullOrEmpty(Configuration["EventBusPassword"]))
-                {
-                    factory.Password = Configuration["EventBusPassword"];
-                }
-
-                return new AutoSubscriber(factory);
-            });
-
+            services.AddSingleton<IConnectionFactory, ConnectionFactory>();
+            services.AddSingleton<IAutoSubscriber, AutoSubscriber>();
             services.AddOptions();
         }
 
@@ -83,7 +61,7 @@ namespace Consumer
             
             lifeTime.ApplicationStarted.Register(() =>
             {
-                autoSubscriber.Subscribe(Assembly.GetExecutingAssembly());
+                autoSubscriber.Subscribe(null,Assembly.GetExecutingAssembly());
                 autoSubscriber.SubscribeAsync(Assembly.GetExecutingAssembly());
             });
 
