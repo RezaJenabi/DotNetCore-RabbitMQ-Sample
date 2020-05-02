@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using Consumer.Models;
-using Consumer.RebbitMQ.Attributes;
+using Common.Attributes;
+using Common.Bus.RabbitMQ;
 
 namespace Consumer.RebbitMQ.IRabbitMQ
 {

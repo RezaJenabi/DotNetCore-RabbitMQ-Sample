@@ -1,13 +1,14 @@
 ﻿using System.Collections.Generic;
 using Consumer.Models;
-using Consumer.RebbitMQ.Attributes;
+using Common.Attributes;
+using Common.Bus.RabbitMQ;
 
 namespace Consumer.RebbitMQ.IRabbitMQ
 {
-    [Queue(queueName: "QueueMessageService", exchangeName: "ExchangeMessageService", routingKey: "MessageService_Id")]
-    public class UserInsert: IConsumer<List<User>>
+    [Queue(queueName: "Person", exchangeName: "ExchangeMessageService", routingKey: "MessageService_Id")]
+    public class UserInsert: IConsumer<User>
     {
-        public void Consume(List<User> message)
+        public void Consume(User message)
         {
             
         }

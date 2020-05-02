@@ -1,9 +1,11 @@
-﻿using Common.RabbitMQ;
+﻿using Common.Bus;
+using Common.Bus.RabbitMQ;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using RabbitMQ.Client;
 
 namespace Producer
 {
@@ -19,7 +21,9 @@ namespace Producer
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddScoped<IRabbitMQApi, RabbitMQApi>();
+            services.AddSingleton<IRabbitMQConnection, RabbitMQConnection>();
+            services.AddSingleton<IBus, BusRabbitMQ>();
+            services.AddSingleton<IConnectionFactory, ConnectionFactory>();
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
         }
 

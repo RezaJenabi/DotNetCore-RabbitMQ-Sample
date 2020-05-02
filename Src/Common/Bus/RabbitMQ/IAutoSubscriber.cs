@@ -2,9 +2,9 @@
 using System;
 using System.Reflection;
 
-namespace Consumer.RebbitMQ
+namespace Common.Bus.RabbitMQ
 {
-    public interface IAutoSubscriber2 : IDisposable
+    public interface IAutoSubscriber : IDisposable
     {
         bool IsConnected { get; }
 
@@ -13,7 +13,7 @@ namespace Consumer.RebbitMQ
         IModel CreateModel();
 
         void Disconnect();
-        void Subscribe(string subscriptionId,Assembly getExecutingAssembly);
+        void Subscribe(Assembly getExecutingAssembly);
         void SubscribeAsync(Assembly getExecutingAssembly);
     }
 }

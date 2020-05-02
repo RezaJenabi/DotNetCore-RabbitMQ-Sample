@@ -1,4 +1,6 @@
 ﻿using System.Reflection;
+using Common.Bus;
+using Common.Bus.RabbitMQ;
 using Consumer.RebbitMQ;
 using Consumer.RebbitMQ.IRabbitMQ;
 using Microsoft.AspNetCore.Builder;
@@ -25,7 +27,8 @@ namespace Consumer
         {
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
             services.AddSingleton<IConnectionFactory, ConnectionFactory>();
-            services.AddSingleton<IAutoSubscriber, AutoSubscriber>();
+            services.AddSingleton<IRabbitMQConnection, RabbitMQConnection>();
+            services.AddSingleton<IBus, BusRabbitMQ>();
             services.AddOptions();
         }
 
@@ -51,17 +54,17 @@ namespace Consumer
 
     public static class ApplicationBuilderExtentions
     {
-        public static AutoSubscriber Bus { get; set; }
+        public static BusRabbitMQ Bus { get; set; }
 
         public static IApplicationBuilder UseRabbitListener(this IApplicationBuilder app)
         {
-            Bus = app.ApplicationServices.GetService<AutoSubscriber>();
+            Bus = app.ApplicationServices.GetService<BusRabbitMQ>();
             var lifeTime = app.ApplicationServices.GetService<IApplicationLifetime>();
-            var autoSubscriber = app.ApplicationServices.GetService<IAutoSubscriber>();
+            var autoSubscriber = app.ApplicationServices.GetService<IBus>();
             
             lifeTime.ApplicationStarted.Register(() =>
             {
-                autoSubscriber.Subscribe(null,Assembly.GetExecutingAssembly());
+                autoSubscriber.Subscribe(Assembly.GetExecutingAssembly());
                 autoSubscriber.SubscribeAsync(Assembly.GetExecutingAssembly());
             });
 

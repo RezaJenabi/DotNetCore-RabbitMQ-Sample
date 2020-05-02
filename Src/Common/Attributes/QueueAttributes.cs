@@ -1,11 +1,11 @@
 ﻿using System;
 
-namespace Consumer.RebbitMQ.Attributes
+namespace Common.Attributes
 {
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface, AllowMultiple = false)]
     public class QueueAttribute : Attribute
     {
-        public QueueAttribute(string queueName = null , string exchangeName = null,string routingKey = null)
+        public QueueAttribute(string queueName = null, string exchangeName = null, string routingKey = null)
         {
             QueueName = queueName;
             ExchangeName = exchangeName;

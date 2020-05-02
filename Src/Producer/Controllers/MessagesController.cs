@@ -1,14 +1,12 @@
-﻿using System;
-using Common.RabbitMQ;
-using Common.ViewModel;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using RabbitMQ.Client;
 using System.Collections.Generic;
 using System.Text;
 using RabbitMQ.Client.Events;
 using Newtonsoft.Json;
 using Consumer.Models;
-using Consumer.Service;
+using Common.Bus;
+using Producer.Models;
 
 namespace Producer.Controllers
 {
@@ -16,27 +14,18 @@ namespace Producer.Controllers
     [ApiController]
     public class MessagesController : ControllerBase
     {
-        private readonly IRabbitMQApi _rabbitMqApi;
-        private string Key { get; } = "Pdf_Log_Queue";
-
-        public MessagesController(IRabbitMQApi rabbitMqApi)
+        private readonly IBus _bus;
+        
+        public MessagesController(IBus bus)
         {
-            _rabbitMqApi = rabbitMqApi;
+            _bus = bus;
         }
         [HttpGet]
         [Route("Send")]
         public JsonResult Send()
         {
-            var publishResult = _rabbitMqApi.PublishDirect(new PublishRequest { Body = "Pdf_Events", RoutingKey = Key });
-            return new JsonResult(publishResult);
-        }
-
-        [HttpGet]
-        [Route("Receive")]
-        public JsonResult Receive()
-        {
-            var subscribeResult = _rabbitMqApi.SubscribeDirect(new SubscribeRequest { Queue = Key });
-            return new JsonResult(subscribeResult);
+            _bus.Publish(new Person { Name = "Reza" });
+            return new JsonResult(null);
         }
 
         [HttpGet]
@@ -51,42 +40,42 @@ namespace Producer.Controllers
                 //-------------------------  Sending Data --------------------------------------------------------------------------------------
                 #region Sending Data
 
-                var objUserList = new List<User> { new User { EmailAddress = "d", FirstName = "d", LastName = "dd" } };
-                using (var channel = connection.CreateModel())
-                {
-                    channel.QueueDeclare(queue: "userInsertMsgQ", durable: false, exclusive: false, autoDelete: false, arguments: null);
-                    // create serialize object to send
-                    var message = JsonConvert.SerializeObject(objUserList);
+                //var objUserList = new List<User> { new User { EmailAddress = "d", FirstName = "d", LastName = "dd" } };
+                //using (var channel = connection.CreateModel())
+                //{
+                //    channel.QueueDeclare(queue: "userInsertMsgQ", durable: false, exclusive: false, autoDelete: false, arguments: null);
+                //    // create serialize object to send
+                //    var message = JsonConvert.SerializeObject(objUserList);
 
-                    var body = Encoding.UTF8.GetBytes(message);
-                    //var body = "[{FirstName='a',LastName='d'}]";
+                //    var body = Encoding.UTF8.GetBytes(message);
+                //    //var body = "[{FirstName='a',LastName='d'}]";
 
-                    var properties = channel.CreateBasicProperties();
-                    properties.Persistent = true;
-                    properties.DeliveryMode = 2;
-                    properties.Headers = new Dictionary<string, object>
-                    {
-                        { "senderUniqueId", senderUniqueId }//optional unique sender details in receiver side              
-                    };
-                    // properties.Expiration = "36000000";
-                    //properties.ContentType = "text/plain";
+                //    var properties = channel.CreateBasicProperties();
+                //    properties.Persistent = true;
+                //    properties.DeliveryMode = 2;
+                //    properties.Headers = new Dictionary<string, object>
+                //    {
+                //        { "senderUniqueId", senderUniqueId }//optional unique sender details in receiver side              
+                //    };
+                //    // properties.Expiration = "36000000";
+                //    //properties.ContentType = "text/plain";
 
-                    channel.ConfirmSelect();
-                    channel.BasicPublish("",
-                                          "userInsertMsgQ",
-                                         false,
-                                         basicProperties: properties,
-                                         body: body);
+                //    channel.ConfirmSelect();
+                //    channel.BasicPublish("",
+                //                          "userInsertMsgQ",
+                //                         false,
+                //                         basicProperties: properties,
+                //                         body: body);
 
-                    channel.WaitForConfirmsOrDie();
+                //    channel.WaitForConfirmsOrDie();
 
-                    channel.BasicAcks += (sender, eventArgs) =>
-                    {
-                        //implement ack handle
-                    };
-                    channel.ConfirmSelect();
+                //    channel.BasicAcks += (sender, eventArgs) =>
+                //    {
+                //        //implement ack handle
+                //    };
+                //    channel.ConfirmSelect();
 
-                }
+                //}
                 #endregion
 
                 //-------------------------  Receiving feedback ---------------------------------------------------------------------------------
@@ -134,19 +123,19 @@ namespace Producer.Controllers
             properties.Persistent = true;
             properties.DeliveryMode = 2;
 
-            var objUserList = new List<User> { new User { EmailAddress = "d", FirstName = "d", LastName = "dd" } };
+           // var objUserList = new List<User> { new User { EmailAddress = "d", FirstName = "d", LastName = "dd" } };
 
-            var message = JsonConvert.SerializeObject(objUserList);
+           // var message = JsonConvert.SerializeObject(objUserList);
 
-            var body = Encoding.UTF8.GetBytes(message);
-            channel.BasicPublish("ExchangeMessageService", "MessageService_Id", properties, body);
+           // var body = Encoding.UTF8.GetBytes(message);
+          //  channel.BasicPublish("ExchangeMessageService", "MessageService_Id", properties, body);
 
 
-            channel.ExchangeDeclare("ExchangeUserUpdate", ExchangeType.Direct, durable: true, autoDelete: false, arguments: null);
-            channel.QueueDeclare("QueueUserUpdate", true, false, false, null);
-            channel.QueueBind("QueueUserUpdate", "ExchangeUserUpdate", "UserUpdate_Id");
+          //  channel.ExchangeDeclare("ExchangeUserUpdate", ExchangeType.Direct, durable: true, autoDelete: false, arguments: null);
+          //  channel.QueueDeclare("QueueUserUpdate", true, false, false, null);
+          //  channel.QueueBind("QueueUserUpdate", "ExchangeUserUpdate", "UserUpdate_Id");
 
-            channel.BasicPublish("ExchangeUserUpdate", "UserUpdate_Id", properties, body);
+         //   channel.BasicPublish("ExchangeUserUpdate", "UserUpdate_Id", properties, body);
 
             // byte[] body = ...;
             // var properties = channel.CreateBasicProperties();
@@ -174,4 +163,6 @@ namespace Producer.Controllers
 
         }
     }
+
+    
 }

@@ -3,14 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Consumer.RebbitMQ.IRabbitMQ
+namespace Common.Bus.RabbitMQ
 {
-    interface IConsumer2<in T>: IConsumer2 where T : class
+    public interface IConsumer<in T> : IConsumer where T : class
     {
         void Consume(T message);
     }
 
-    interface IConsumer2
+    public interface IConsumer
     {
     }
 }

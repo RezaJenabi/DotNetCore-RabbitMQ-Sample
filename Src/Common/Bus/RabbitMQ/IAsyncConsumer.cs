@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Consumer.RebbitMQ.IRabbitMQ
+namespace Common.Bus.RabbitMQ
 {
-    interface IAsyncConsumer2<in T> where T : class
+    interface IAsyncConsumer<in T> where T : class
     {
         Task ConsumeAsync(T message);
-    } 
+    }
 }

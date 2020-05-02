@@ -9,18 +9,18 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Consumer.Models;
-using Consumer.RebbitMQ.Attributes;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Common.Attributes;
 
 namespace Consumer.RebbitMQ.IRabbitMQ
 {
-    public class AutoSubscriber : IAutoSubscriber
+    public class AutoSubscriber2 : IAutoSubscriber2
     {
         private readonly IConnectionFactory _connectionFactory;
         IConnection _connection;
         bool _disposed;
-        private readonly IAutoSubscriber _persistentConnection;
+        private readonly IAutoSubscriber2 _persistentConnection;
         private IModel _consumerChannel;
         private string _queueName;
         private string _exchangeName;
@@ -29,7 +29,7 @@ namespace Consumer.RebbitMQ.IRabbitMQ
         private MethodInfo _consumeMethod;
 
 
-        public AutoSubscriber(IConnectionFactory connectionFactory)
+        public AutoSubscriber2(IConnectionFactory connectionFactory)
         {
             _connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
             if (!IsConnected)
@@ -47,7 +47,7 @@ namespace Consumer.RebbitMQ.IRabbitMQ
             var items = getExecutingAssembly.GetExportedTypes().Where(x => x.IsClass).ToList();
             items.ForEach(x =>
             {
-                if (x.GetInterfaces().All(y => y != typeof(IConsumer))) return;
+                if (x.GetInterfaces().All(y => y != typeof(IConsumer2))) return;
                 var consumer = x.GetConstructor(Type.EmptyTypes);
                 foreach (Attribute attribute in x.GetCustomAttributes(true))
                 {
@@ -132,7 +132,7 @@ namespace Consumer.RebbitMQ.IRabbitMQ
             var items = Assembly.GetExecutingAssembly()?.GetExportedTypes().Where(x => x.IsClass).ToList();
             items.ForEach(x =>
             {
-                if (x.GetInterfaces().All(y => y != typeof(IConsumer))) return;
+                if (x.GetInterfaces().All(y => y != typeof(IConsumer2))) return;
                 var consumer = x.GetConstructor(Type.EmptyTypes);
 
                 _queueName = x.Name;
