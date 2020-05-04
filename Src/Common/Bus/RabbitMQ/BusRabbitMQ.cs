@@ -4,6 +4,7 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -18,23 +19,21 @@ namespace Common.Bus.RabbitMQ
         private string _queueName;
         const string BROKER_NAME = "ecommerce_bus";
         private object _consumer;
+        private Assembly _getExecutingAssembly;
 
         public BusRabbitMQ(IRabbitMQConnection persistentConnection)
         {
+            Debug.WriteLine("BusRabbitMQ Constractor");
+
             _persistentConnection = persistentConnection ?? throw new ArgumentNullException(nameof(persistentConnection));
         }
 
 
         public void Publish(IntegrationEvent @event)
         {
-            if (!_persistentConnection.IsConnected)
-            {
-                _persistentConnection.TryConnect();
-            }
+            Debug.WriteLine("BusRabbitMQ Publish");
 
-            Init(@event);
-
-            using (_consumerChannel = CreateChannel())
+            using (_consumerChannel = CreateChannel(@event.GetType()))
             {
                 var message = JsonConvert.SerializeObject(@event);
                 var body = Encoding.UTF8.GetBytes(message);
@@ -52,88 +51,77 @@ namespace Common.Bus.RabbitMQ
 
         public void Subscribe(Assembly getExecutingAssembly)
         {
-            if (!_persistentConnection.IsConnected)
-            {
-                _persistentConnection.TryConnect();
-            }
+            Debug.WriteLine("BusRabbitMQ Subscribe");
+
+            _getExecutingAssembly = getExecutingAssembly;
 
             var items = getExecutingAssembly.GetExportedTypes().Where(x => x.IsClass).ToList();
             items.ForEach(x =>
             {
-                if (x.GetInterfaces().All(y => y != typeof(IConsumer))) return;
-                var consumer = x.GetConstructor(Type.EmptyTypes);
-                foreach (Attribute attribute in x.GetCustomAttributes(true))
+                if (x.GetInterfaces().Any(y => y == typeof(IConsumer)))
                 {
-                    if (!(attribute is QueueAttribute queue)) continue;
-                    _queueName = queue.QueueName ?? x.Name;
-
+                    var consumer = x.GetConstructor(Type.EmptyTypes);
                     if (consumer != null) _consumer = consumer.Invoke(new object[] { });
-
                     _consumeMethod = x.GetMethod("Consume");
-
-                    Consumer();
+                    Consumer(x);
                 }
+
             });
         }
 
         public void SubscribeAsync(Assembly getExecutingAssembly)
         {
-
+            _getExecutingAssembly = getExecutingAssembly;
         }
 
-        private IModel Consumer()
+        private IModel Consumer(Type @event)
         {
-            if (!_persistentConnection.IsConnected)
+            Debug.WriteLine("BusRabbitMQ Consumer");
+
+            using (_consumerChannel = CreateChannel(@event))
             {
-                _persistentConnection.TryConnect();
-            }
-
-            var channel = CreateChannel();
-
-            var consumer = new EventingBasicConsumer(channel);
-            consumer.Received += ReceivedEvent;
-            channel.BasicConsume(queue: _queueName, autoAck: true, consumer: consumer);
-            channel.CallbackException += (sender, ea) =>
+                var consumer = new EventingBasicConsumer(_consumerChannel);
+                consumer.Received += ReceivedEvent;
+                _consumerChannel.BasicConsume(queue: _queueName, autoAck: true, consumer: consumer);
+                _consumerChannel.CallbackException += (sender, ea) =>
             {
                 _consumerChannel.Dispose();
-                _consumerChannel = Consumer();
+                _consumerChannel = Consumer(@event);
             };
-            return channel;
+
+                return _consumerChannel;
+            }
         }
 
-        private IModel AsyncConsumer()
+        private IModel AsyncConsumer(Type @event)
         {
-            if (!_persistentConnection.IsConnected)
+            using (_consumerChannel = CreateChannel(@event))
             {
-                _persistentConnection.TryConnect();
+                var consumer = new EventingBasicConsumer(_consumerChannel);
+
+                consumer.Received += async (model, e) =>
+                {
+                    var eventName = e.RoutingKey;
+                    var message = Encoding.UTF8.GetString(e.Body);
+                    _consumerChannel.BasicAck(e.DeliveryTag, multiple: false);
+                };
+
+                _consumerChannel.BasicConsume(queue: _queueName, autoAck: true, consumer: consumer);
+                _consumerChannel.CallbackException += (sender, ea) =>
+                {
+                    _consumerChannel.Dispose();
+                    _consumerChannel = AsyncConsumer(@event);
+                };
+                return _consumerChannel;
             }
 
-            var channel = CreateChannel();
-            channel.QueueDeclare(_queueName, true, false, false, null);
-
-            var consumer = new EventingBasicConsumer(channel);
-
-            consumer.Received += async (model, e) =>
-            {
-                var eventName = e.RoutingKey;
-                var message = Encoding.UTF8.GetString(e.Body);
-                channel.BasicAck(e.DeliveryTag, multiple: false);
-            };
-
-
-            channel.BasicConsume(queue: _queueName, autoAck: true, consumer: consumer);
-            channel.CallbackException += (sender, ea) =>
-            {
-                _consumerChannel.Dispose();
-                _consumerChannel = AsyncConsumer();
-            };
-            return channel;
         }
 
         private void ReceivedEvent(object sender, BasicDeliverEventArgs e)
         {
+            Debug.WriteLine("BusRabbitMQ ReceivedEvent");
 
-            var items = Assembly.GetExecutingAssembly()?.GetExportedTypes().Where(x => x.IsClass).ToList();
+            var items = _getExecutingAssembly?.GetExportedTypes().Where(x => x.IsClass).ToList();
             items.ForEach(x =>
             {
                 if (x.GetInterfaces().All(y => y != typeof(IConsumer))) return;
@@ -148,11 +136,15 @@ namespace Common.Bus.RabbitMQ
                     if (_queueName != e.RoutingKey) continue;
 
                     if (_consumeMethod != null)
+                    {
+                        Debug.WriteLine("BusRabbitMQ _consumeMethod");
                         _consumeMethod.Invoke(_consumer, new object[]
-                        {
-                            JsonConvert.DeserializeObject(System.Text.Encoding.UTF8.GetString(e.Body),
+                      {
+                            JsonConvert.DeserializeObject(Encoding.UTF8.GetString(e.Body),
                                 _consumeMethod.GetParameters().FirstOrDefault()?.ParameterType)
-                        });
+                      });
+                    }
+
                 }
             });
         }
@@ -200,12 +192,10 @@ namespace Common.Bus.RabbitMQ
             }
         }
 
-        private IModel CreateChannel()
+        private IModel CreateChannel(Type @event)
         {
-            if (!_persistentConnection.IsConnected)
-            {
-                _persistentConnection.TryConnect();
-            }
+            Init(@event);
+            _persistentConnection.TryConnect();
 
             var channel = _persistentConnection.CreateModel();
 
@@ -216,20 +206,20 @@ namespace Common.Bus.RabbitMQ
             channel.CallbackException += (sender, ea) =>
             {
                 _consumerChannel.Dispose();
-                _consumerChannel = CreateChannel();
+                _consumerChannel = CreateChannel(@event);
             };
 
             return channel;
         }
 
-        private void Init(IntegrationEvent @event)
+        private void Init(Type @event)
         {
-            foreach (Attribute attribute in @event.GetType().GetCustomAttributes(true))
+            foreach (Attribute attribute in @event.GetCustomAttributes(true))
             {
                 if (!(attribute is QueueAttribute queue)) continue;
-                _queueName = queue.QueueName ?? @event.GetType().Name;
+                _queueName = queue.QueueName ?? @event.Name;
             }
         }
-       
+
     }
 }

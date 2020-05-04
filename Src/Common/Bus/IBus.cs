@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Common.Bus
 {
-    public interface IBus
+    public interface IBus:IDisposable
     {
         void Publish(IntegrationEvent @event);
         void Subscribe(Assembly getExecutingAssembly);

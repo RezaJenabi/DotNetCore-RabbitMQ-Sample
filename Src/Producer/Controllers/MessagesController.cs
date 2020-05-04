@@ -24,7 +24,7 @@ namespace Producer.Controllers
         [Route("Send")]
         public JsonResult Send()
         {
-            _bus.Publish(new Person { Name = "Reza" });
+            _bus.Publish(new User { Name = "Reza" });
             return new JsonResult(null);
         }
 

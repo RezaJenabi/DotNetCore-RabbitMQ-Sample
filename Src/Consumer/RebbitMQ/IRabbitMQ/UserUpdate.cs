@@ -6,11 +6,11 @@ using Common.Bus.RabbitMQ;
 namespace Consumer.RebbitMQ.IRabbitMQ
 {
     [Queue(queueName: "QueueUserUpdate", exchangeName: "ExchangeUserUpdate", routingKey: "UserUpdate_Id")]
-    public class UserUpdate : IConsumer<List<User>>
+    public class UserUpdate : IConsumer<List<Person>>
     {
-        public void Consume(List<User> message)
+        public void Consume(List<Person> message)
         {
-            
+
         }
     }
 }

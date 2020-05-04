@@ -1,14 +1,11 @@
 ﻿using System.Reflection;
 using Common.Bus;
 using Common.Bus.RabbitMQ;
-using Consumer.RebbitMQ;
-using Consumer.RebbitMQ.IRabbitMQ;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 
 namespace Consumer
@@ -22,7 +19,6 @@ namespace Consumer
 
         public IConfiguration Configuration { get; }
 
-        // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
@@ -32,7 +28,6 @@ namespace Consumer
             services.AddOptions();
         }
 
-        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env)
         {
             if (env.IsDevelopment())
@@ -43,35 +38,38 @@ namespace Consumer
             {
                 app.UseHsts();
             }
-
             app.UseHttpsRedirection();
-            //Initilize Rabbit Listener in ApplicationBuilderExtentions
-            app.UseRabbitListener();
             app.UseMvc();
+            app.UseRabbitListener();
 
         }
     }
 
     public static class ApplicationBuilderExtentions
     {
-        public static BusRabbitMQ Bus { get; set; }
+        public static IBus Bus { get; set; }
 
         public static IApplicationBuilder UseRabbitListener(this IApplicationBuilder app)
         {
-            Bus = app.ApplicationServices.GetService<BusRabbitMQ>();
-            var lifeTime = app.ApplicationServices.GetService<IApplicationLifetime>();
-            var autoSubscriber = app.ApplicationServices.GetService<IBus>();
-            
-            lifeTime.ApplicationStarted.Register(() =>
-            {
-                autoSubscriber.Subscribe(Assembly.GetExecutingAssembly());
-                autoSubscriber.SubscribeAsync(Assembly.GetExecutingAssembly());
-            });
+            Bus = app.ApplicationServices.GetService<IBus>();
+            var life = app.ApplicationServices.GetService<IApplicationLifetime>();
+            life.ApplicationStarted.Register(OnStarted);
 
-            lifeTime.ApplicationStopped.Register(callback: () => Bus.Dispose());
-
+            life.ApplicationStopping.Register(OnStopping);
             return app;
         }
-      
+
+        private static void OnStarted()
+        {
+            Bus.Subscribe(Assembly.GetExecutingAssembly());
+            Bus.SubscribeAsync(Assembly.GetExecutingAssembly());
+
+        }
+
+        private static void OnStopping()
+        {
+            Bus.Dispose();
+        }
+
     }
 }

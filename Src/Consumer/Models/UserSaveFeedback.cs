@@ -10,6 +10,6 @@ namespace Consumer.Models
     {
         public int successCount { get; set; }
         public int failedCount { get; set; }
-        public List<User> failedList { get; set; }
+        public List<Person> failedList { get; set; }
     }
 }
